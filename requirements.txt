@@ -1,0 +1,8 @@
+aiogram==3.13.1
+apscheduler==3.10.4
+gspread==6.1.2
+google-auth==2.35.0
+python-dotenv==1.0.1
+pytz==2024.2
+uvicorn==0.30.6          # если захочешь webhook вместо polling
+aiofiles==24.1.0         # для логов и работы с файлами
