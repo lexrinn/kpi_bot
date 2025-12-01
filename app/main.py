@@ -2,9 +2,12 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 
+import aiohttp
 import pytz
 from aiogram import Dispatcher
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.bot import bot
@@ -25,7 +28,6 @@ dp.include_router(monitoring_router)
 # ─────────────────────── МЕНЕДЖЕР ДАННЫХ ───────────────────────
 dm = DataManager()
 
-
 async def update_cache_job():
     """Обновление кэша из Google Sheets"""
     logger.info("Запуск планового обновления кэша...")
@@ -35,6 +37,18 @@ async def update_cache_job():
     else:
         logger.error("Ошибка обновления кэша")
 
+async def on_startup(app):
+    """Стартап: обновление кэша + webhook"""
+    await update_cache_job()  # Первое обновление сразу
+
+    if os.getenv("RENDER"):  # Только на Render
+        webhook_url = f"https://{os.getenv('RENDER_SERVICE_NAME')}.onrender.com/webhook"
+        await bot.set_webhook(webhook_url)
+        logger.info(f"Webhook установлен: {webhook_url}")
+
+async def on_shutdown(app):
+    """Шатдаун: удаляем webhook"""
+    await bot.delete_webhook()
 
 async def main():
     # ───── Планировщик обновлений (10:00 и 16:00 МСК) ─────
@@ -43,26 +57,26 @@ async def main():
         scheduler.add_job(update_cache_job, "cron", hour=hour, minute=minute)
     scheduler.start()
 
-    # ───── Первое обновление сразу при старте ─────
-    await update_cache_job()
+    # ───── Режим запуска ─────
+    if os.getenv("RENDER"):
+        # ───── WEBHOOK НА RENDER ─────
+        app = aiohttp.web.Application()
+        app.on_startup.append(on_startup)
+        app.on_shutdown.append(on_shutdown)
 
-    # ───── Режим запуска: webhook на Render, polling везде остальном ─────
-    if os.getenv("RENDER"):  # ← автоматически true только на Render
-        service_name = os.getenv("RENDER_SERVICE_NAME")
-        webhook_url = f"https://{service_name}.onrender.com/webhook"
+        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
 
-        await bot.delete_webhook(drop_pending_updates=True)
-        await bot.set_webhook(webhook_url)
-        logger.info(f"Webhook установлен: {webhook_url}")
-
-        # На Render ничего больше не запускаем — aiohttp держит процесс живым
-        await asyncio.Event().wait()  # держим процесс бесконечно
+        # Биндим порт для Render (0.0.0.0:PORT)
+        port = int(os.getenv("PORT", 10000))
+        host = "0.0.0.0"
+        logger.info(f"Запуск webhook-сервера на {host}:{port}")
+        aiohttp.web.run_app(app, host=host, port=port)
 
     else:
-        # Локально и на PythonAnywhere — обычный polling
-        logger.info("Запуск в режиме polling")
+        # ───── POLLING ВЕЗДЕ ОСТАЛЬНОМ ─────
+        logger.info("Запуск в режиме polling (локально)")
+        await on_startup(None)  # Обновляем кэш
         await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
