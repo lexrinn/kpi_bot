@@ -7,32 +7,54 @@ def get_kpi_indicator(value, metric: str):
         num = float(clean)
     except:
         return "Unknown"
-
+    
     if metric == "CR":
-        if num < 3.5:  return "Red"
-        if num < 5.0:  return "Yellow"
-        if num < 6.0:  return "Green"
-        if num < 7.0:  return "Blue"
-        return "Purple"
-    if metric == "QA":
-        if num < 80:   return "Red"
-        if num < 90:   return "Yellow"
-        if num < 95:   return "Green"
-        if num < 98:   return "Blue"
-        return "Purple"
-    return "Unknown"
+        if num >= 7.0:
+            return "Purple"
+        elif num >= 6.0:
+            return "Blue"
+        elif num >= 4.5:
+            return "Green"
+        elif num >= 3.0:
+            return "Yellow"
+        else:
+            return "Red"
+
+    elif metric == "QA":
+        if num >= 100:
+            return "Purple"         
+        elif num >= 99:
+            return "Blue"
+        elif num >=95:
+            return "Green"
+        elif num >=90:
+            return "Yellow"
+        else:
+            return "Red"
 
 
 def get_bugs_indicator(time_str):
     """Возвращает название цвета для времени исправления багов"""
+    # try:
+    #     h, m = map(int, str(time_str).split(':')[:2])
+    #     minutes = h * 60 + m
+    #     if minutes <= 120:  return "Green"
+    #     if minutes <=300:  return "Yellow"
+    #     return "Red"
+    # except:
+    #     return "Unknown"
+
     try:
-        h, m = map(int, str(time_str).split(':')[:2])
-        minutes = h * 60 + m
-        if minutes <= 120:  return "Green"
-        if minutes <=300:  return "Yellow"
-        return "Red"
-    except:
+    h, m = map(int, str(time_str).split(":")[:2])
+    minutes = h * 60 + m
+    except Exception:
         return "Unknown"
+    
+    if minutes <= 120:
+        return "Green"
+    if minutes <= 300:
+        return "Yellow"
+    return "Red"
 
 
 # Эмодзи-кружки для цветового отображения
@@ -69,3 +91,4 @@ def get_emoji(indicator: str) -> str:
 
 def get_sticker(indicator: str, category: str) -> str | None:
     return STICKERS.get(category, {}).get(indicator)
+
