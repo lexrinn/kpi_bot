@@ -48,11 +48,13 @@ def create_app() -> aiohttp.web.Application:
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
 
-    # Webhook роут
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
 
-    # Простой роут, чтобы Render видел живой сервис
+    # Health-check для Render
     app.router.add_get("/", lambda r: aiohttp.web.Response(text="KPI Bot работает!"))
+
+    # Пинг для keep-alive (будит бота каждые 10 мин)
+    app.router.add_get("/ping", lambda r: aiohttp.web.Response(text="OK"))
 
     # Планировщик
     scheduler = AsyncIOScheduler(timezone=pytz.timezone(TIMEZONE))
@@ -75,3 +77,4 @@ if __name__ == "__main__":
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Запуск webhook на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
