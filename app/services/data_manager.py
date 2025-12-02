@@ -16,6 +16,7 @@ class DataManager:
 
     def __new__(cls):
         if cls._instance is None:
+            logger.info("Создаём единственный экземпляр DataManager")
             cls._instance = super().__new__(cls)
             cls._instance.cache = {"kpi": [], "monitoring": []}
             cls._instance.last_update = None
@@ -28,7 +29,6 @@ class DataManager:
             "https://www.googleapis.com/auth/drive"
         ]
 
-        # 1. Из переменной окружения (для Render, Docker и т.п.)
         creds_json_str = os.getenv('GOOGLE_CREDS_JSON')
         if creds_json_str:
             try:
@@ -36,9 +36,8 @@ class DataManager:
                 creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
                 return gspread.authorize(creds)
             except Exception as e:
-                logger.error(f"Ошибка парсинга GOOGLE_CREDS_JSON: {e}")
+                logger.error(f"Ошибка GOOGLE_CREDS_JSON: {e}")
 
-        # 2. Локальный файл creds.json (для разработки)
         key_file = os.getenv('GOOGLE_KEY_FILE', 'creds.json')
         if os.path.exists(key_file):
             try:
@@ -51,7 +50,6 @@ class DataManager:
         return None
 
     async def update_cache(self) -> bool:
-        """Обновляет кэш из Google Sheets. Возвращает True если всё ок."""
         sheet_name = os.getenv('GOOGLE_SHEET_NAME')
         if not sheet_name:
             logger.error("Не задан GOOGLE_SHEET_NAME в .env")
@@ -74,26 +72,24 @@ class DataManager:
 
             self.cache = {"kpi": kpi_data, "monitoring": mon_data}
             self.last_update = datetime.now()
+            logger.info(f"Кэш обновлён → KPI: {len(kpi_data)}, Monitoring: {len(mon_data)}")
 
-            logger.info(f"Кэш обновлён → KPI: {len(kpi_data)} строк, Monitoring: {len(mon_data)} строк")
-
-            # === МАГИЯ ДЛЯ ЛОКАЛЬНОГО ДЕБАГА ===
-            if not os.getenv("RENDER"):  # только локально
+            # Только локально пишем файл для дебага
+            if not os.getenv("RENDER"):
                 try:
                     with open("cached_data.json", "w", encoding="utf-8") as f:
                         json.dump(self.cache, f, ensure_ascii=False, indent=2)
-                    logger.info("Локально сохранён cached_data.json (для дебага)")
+                    logger.info("cached_data.json сохранён локально")
                 except Exception as e:
-                    logger.warning(f"Не удалось записать cached_data.json: {e}")
+                    logger.warning(f"Не удалось сохранить cached_data.json: {e}")
 
             return True
 
         except Exception as e:
-            logger.error(f"Ошибка при обновлении кэша из Google Sheets: {e}")
+            logger.error(f"Ошибка обновления кэша: {e}")
             return False
 
     def get_user_data(self, sheet_type: str, username: str):
-        """Синхронный метод — используется в хендлерах"""
         if not username:
             return None
 
@@ -101,11 +97,9 @@ class DataManager:
         search = username.strip().lstrip('@').lower()
 
         for row in rows:
-            if row and len(row) > 0:
-                cell = str(row[0]).strip().lstrip('@').lower()
-                if cell == search:
+            if not row:
+                continue
+            for cell in row[:3]:  # ищем в первых трёх колонках
+                if str(cell).strip().lstrip('@').lower() == search:
                     return row
         return None
-
-    def get_last_update(self):
-        return self.last_update
