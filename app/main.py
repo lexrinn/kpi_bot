@@ -32,16 +32,10 @@ async def update_cache_job():
 
 async def on_startup(app):
     await update_cache_job()
-    # Ждём 10 секунд, пока Railway даст домен
-    for _ in range(10):
-        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
-        if domain:
-            webhook_url = f"https://{domain}/webhook"
-            await bot.set_webhook(webhook_url)
-            logger.info(f"Webhook установлен: {webhook_url}")
-            return
-        await asyncio.sleep(1)
-    logger.warning("Домен не получен — webhook не установлен")
+
+    webhook_url = "https://kpi-bot.up.railway.app/webhook"
+    await bot.set_webhook(webhook_url)
+    logger.info(f"Webhook установлен: {webhook_url}")
 
 
 async def on_shutdown(app):
@@ -74,3 +68,4 @@ if __name__ == "__main__":
     else:
         logger.info("Запуск локально — polling")
         asyncio.run(dp.start_polling(bot))
+
