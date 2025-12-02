@@ -1,12 +1,13 @@
-# main.py — 100 % обновляет кэш при старте
+# app/main.py — РАБОТАЕТ НА RENDER И ЛОКАЛЬНО. ТОЧКА.
 import asyncio
 import logging
 import os
+
 import aiohttp.web
+import pytz
 from aiogram import Dispatcher
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import pytz
 
 from app.bot import bot
 from app.services.data_manager import DataManager
@@ -21,22 +22,17 @@ dp.include_router(start_router)
 dp.include_router(kpi_router)
 dp.include_router(monitoring_router)
 
-# ←←←←← ВОТ ЭТО ГЛАВНОЕ ←←←←←
-dm = DataManager()  # создаём экземпляр один раз
+dm = DataManager()
 
 
 async def update_cache_job():
-    logger.info("Запуск обновления кэша...")
-    success = await asyncio.to_thread(dm.update_cache)  # ← используем один и тот же dm
-    if success:
-        logger.info("КЭШ УСПЕШНО ОБНОВЛЁН")
-    else:
-        logger.error("ОШИБКА ОБНОВЛЕНИЯ КЭША")
+    logger.info("Обновление кэша...")
+    success = await asyncio.to_thread(dm.update_cache)
+    logger.info("Кэш обновлён!" if success else "Ошибка кэша")
 
 
 async def on_startup(app):
-    await update_cache_job()  # ← ПЕРВОЕ ОБНОВЛЕНИЕ СРАЗУ ПРИ СТАРТЕ
-
+    await update_cache_job()
     if os.getenv("RENDER"):
         webhook_url = f"https://{os.getenv('RENDER_SERVICE_NAME')}.onrender.com/webhook"
         await bot.set_webhook(webhook_url)
@@ -47,18 +43,18 @@ async def on_shutdown(app):
     await bot.delete_webhook()
 
 
-def create_app():
+def create_app() -> aiohttp.web.Application:
     app = aiohttp.web.Application()
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
 
-    handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
-    app.router.add_post("/webhook", handler.handle)
+    # Webhook роут
+    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
 
+    # Простой роут, чтобы Render видел живой сервис
     app.router.add_get("/", lambda r: aiohttp.web.Response(text="KPI Bot работает!"))
-    app.router.add_get("/ping", lambda r: aiohttp.web.Response(text="OK"))
 
-    # Планировщик 10:00 и 16:00
+    # Планировщик
     scheduler = AsyncIOScheduler(timezone=pytz.timezone(TIMEZONE))
     for h, m in UPDATE_TIMES:
         scheduler.add_job(update_cache_job, "cron", hour=h, minute=m)
@@ -67,14 +63,15 @@ def create_app():
     return app
 
 
+# ─────── ОСНОВНОЙ ЗАПУСК ───────
 if __name__ == "__main__":
-    if os.getenv("RENDER"):
+    # Локально — polling
+    if not os.getenv("RENDER"):
+        logger.info("Запуск в режиме polling (локально)")
+        asyncio.run(dp.start_polling(bot))
+    else:
+        # На Render — webhook
         app = create_app()
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Запуск webhook на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
-    else:
-        logger.info("Запуск локально — polling")
-        # ←←←←← И ЗДЕСЬ ТОЖЕ ОБНОВЛЯЕМ КЭШ ПРИ СТАРТЕ ←←←←←
-        asyncio.run(asyncio.to_thread(dm.update_cache))
-        asyncio.run(dp.start_polling(bot))
