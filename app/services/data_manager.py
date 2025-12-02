@@ -89,7 +89,8 @@ class DataManager:
             logger.error(f"Ошибка обновления кэша: {e}")
             return False
 
-    def get_user_data(self, sheet_type: str, username: str):
+        def get_user_data(self, sheet_type: str, username: str):
+        """Ищет строку пользователя ТОЛЬКО в колонке A (первая колонка)"""
         if not username:
             return None
 
@@ -97,9 +98,12 @@ class DataManager:
         search = username.strip().lstrip('@').lower()
 
         for row in rows:
-            if not row:
+            if not row:  # пустая строка
                 continue
-            for cell in row[:3]:  # ищем в первых трёх колонках
-                if str(cell).strip().lstrip('@').lower() == search:
-                    return row
+            # Берём строго первую ячейку (колонка A)
+            cell = str(row[0]).strip().lstrip('@').lower()
+            if cell == search:
+                return row
+
         return None
+
