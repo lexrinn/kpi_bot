@@ -90,20 +90,14 @@ class DataManager:
             return False
 
         def get_user_data(self, sheet_type: str, username: str):
-        """Ищет строку пользователя ТОЛЬКО в колонке A (первая колонка)"""
-        if not username:
+            if not username:
+                return None
+    
+            rows = self.cache.get(sheet_type, [])
+            search = username.strip().lstrip('@').lower()
+    
+            for row in rows:
+                if row and str(row[0]).strip().lstrip('@').lower() == search:
+                    return row
             return None
-
-        rows = self.cache.get(sheet_type, [])
-        search = username.strip().lstrip('@').lower()
-
-        for row in rows:
-            if not row:  # пустая строка
-                continue
-            # Берём строго первую ячейку (колонка A)
-            cell = str(row[0]).strip().lstrip('@').lower()
-            if cell == search:
-                return row
-
-        return None
 
