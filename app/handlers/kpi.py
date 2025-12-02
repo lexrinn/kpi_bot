@@ -25,7 +25,11 @@ async def my_kpi(message: Message):
 
     # Худший показатель → стикер
     priority = {"Red":1, "Yellow":2, "Green":3, "Blue":4, "Purple":5}
-    worst = cr_emo if priority.get(get_kpi_indicator(cr_val, "CR"), 6) <= priority.get(get_kpi_indicator(qa_val, "QA"), 6) else qa_emo
+    cr_key = get_kpi_indicator(cr_val, "CR")
+    qa_key = get_kpi_indicator(qa_val, "QA")
+    worst_key = cr_key if priority.get(cr_key, 6) <= priority.get(qa_key, 6) else qa_key
+    
+    sticker = get_sticker(worst_key, "KPI")
 
     sticker = get_sticker(worst, "KPI")
     if sticker:
@@ -35,4 +39,5 @@ async def my_kpi(message: Message):
             pass
 
     text = f"**KPI:**\n\n{cr_emo} CR: **{cr_val}**\n{qa_emo} QA: **{qa_val}**"
+
     await message.answer(text, parse_mode="Markdown", reply_markup=get_keyboard())
