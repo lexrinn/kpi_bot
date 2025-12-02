@@ -38,6 +38,7 @@ class DataManager:
         return None
 
     def update_cache(self):
+        print(f"CREDS: {os.getenv('GOOGLE_CREDS_JSON')[:100]}...")  # первые 100 символов
         sheet_name = os.getenv('GOOGLE_SHEET_NAME')
         print(f"Обновляю кэш из таблицы: '{sheet_name}'")
 
@@ -89,4 +90,5 @@ class DataManager:
             return None
         except Exception as e:
             logging.error(f"Ошибка чтения кэша: {e}")
+
             return "Error"
