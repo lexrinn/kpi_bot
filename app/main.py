@@ -47,13 +47,11 @@ def create_app():
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
 
-    # ЯВНЫЙ РОУТ ДЛЯ WEBHOOK (фиксит 404 на Railway)
-    async def webhook_handler(request):
-        return await SimpleRequestHandler(dispatcher=dp, bot=bot).handle_request(request)
+    # ←←←←← КРИТИЧНО: так работает на Railway ←←←←←
+    handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+    app.router.add_post("/webhook", handler.handle)
 
-    app.router.add_post("/webhook", webhook_handler)
-
-    # Health-check роуты
+    # Health-check
     app.router.add_get("/", lambda r: aiohttp.web.Response(text="KPI Bot работает!"))
     app.router.add_get("/ping", lambda r: aiohttp.web.Response(text="OK"))
 
@@ -75,5 +73,6 @@ if __name__ == "__main__":
     else:
         logger.info("Запуск локально — polling")
         asyncio.run(dp.start_polling(bot))
+
 
 
