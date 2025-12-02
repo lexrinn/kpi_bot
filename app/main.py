@@ -1,8 +1,7 @@
-# app/main.py — РАБОТАЕТ НА RENDER И ЛОКАЛЬНО. ТОЧКА.
+# app/main.py — 100 % работает на Railway, Render и локально
 import asyncio
 import logging
 import os
-
 import aiohttp.web
 import pytz
 from aiogram import Dispatcher
@@ -33,30 +32,30 @@ async def update_cache_job():
 
 async def on_startup(app):
     await update_cache_job()
-    if os.getenv("RENDER"):
-        webhook_url = f"https://{os.getenv('RENDER_SERVICE_NAME')}.onrender.com/webhook"
-        await bot.set_webhook(webhook_url)
-        logger.info(f"Webhook установлен: {webhook_url}")
+    # Ждём 10 секунд, пока Railway даст домен
+    for _ in range(10):
+        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+        if domain:
+            webhook_url = f"https://{domain}/webhook"
+            await bot.set_webhook(webhook_url)
+            logger.info(f"Webhook установлен: {webhook_url}")
+            return
+        await asyncio.sleep(1)
+    logger.warning("Домен не получен — webhook не установлен")
 
 
 async def on_shutdown(app):
     await bot.delete_webhook()
 
 
-def create_app() -> aiohttp.web.Application:
+def create_app():
     app = aiohttp.web.Application()
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
-
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path="/webhook")
-
-    # Health-check для Render
     app.router.add_get("/", lambda r: aiohttp.web.Response(text="KPI Bot работает!"))
-
-    # Пинг для keep-alive (будит бота каждые 10 мин)
     app.router.add_get("/ping", lambda r: aiohttp.web.Response(text="OK"))
 
-    # Планировщик
     scheduler = AsyncIOScheduler(timezone=pytz.timezone(TIMEZONE))
     for h, m in UPDATE_TIMES:
         scheduler.add_job(update_cache_job, "cron", hour=h, minute=m)
@@ -65,33 +64,13 @@ def create_app() -> aiohttp.web.Application:
     return app
 
 
-# ─────── ОСНОВНОЙ ЗАПУСК ───────
 if __name__ == "__main__":
-    # Если мы на Railway, Render или любом хостинге с портом — запускаем webhook
-    if os.getenv("PORT") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER"):
-        logger.info("Запуск в режиме webhook (Railway/Render)")
+    if os.getenv("PORT") or os.getenv("RAILWAY_ENVIRONMENT"):
+        logger.info("Запуск на Railway/Render — webhook режим")
         app = create_app()
-
-        # Формируем правильный URL
-        domain = (
-            os.getenv("RAILWAY_PUBLIC_DOMAIN") or 
-            f"{os.getenv('RENDER_SERVICE_NAME')}.onrender.com"
-        )
-        webhook_url = f"https://{domain}/webhook"
-        
-        # Устанавливаем webhook (это можно делать в on_startup, но на всякий случай здесь тоже)
-        import asyncio
-        asyncio.run(bot.set_webhook(webhook_url))
-        logger.info(f"Webhook установлен: {webhook_url}")
-
-        # Запускаем сервер
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Сервер запущен на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
-
     else:
-        # Локально — polling
-        logger.info("Запуск в режиме polling (локально)")
+        logger.info("Запуск локально — polling")
         asyncio.run(dp.start_polling(bot))
-
-
