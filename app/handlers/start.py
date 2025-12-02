@@ -7,7 +7,7 @@ router = Router()
 
 @router.message(Command("start"))
 async def start(message: Message):
-    await message.answer("Привет! /n Выбери пункт меню:", reply_markup=get_keyboard())
+    await message.answer("Привет! Выбери пункт меню:", reply_markup=get_keyboard())
 
 @router.message(Command("update"))
 async def upd(message: Message):
@@ -15,3 +15,4 @@ async def upd(message: Message):
     ok = DataManager().update_cache()
 
     await message.answer("Готово!" if ok else "Ошибка")
+
