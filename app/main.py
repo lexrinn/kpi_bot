@@ -1,4 +1,4 @@
-# app/main.py — 100 % работает на Railway, Render и локально
+# app/main.py
 import asyncio
 import logging
 import os
@@ -32,14 +32,14 @@ async def update_cache_job():
 
 async def on_startup(app):
     await update_cache_job()
-
-    webhook_url = "https://kpi-bot.up.railway.app/webhook"
+    webhook_url = f"https://kpi-bot.up.railway.app/webhook"
     await bot.set_webhook(webhook_url)
     logger.info(f"Webhook установлен: {webhook_url}")
 
 
 async def on_shutdown(app):
     await bot.delete_webhook()
+    logger.info("Webhook удалён")
 
 
 def create_app():
@@ -47,11 +47,10 @@ def create_app():
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
 
-    # ←←←←← КРИТИЧНО: так работает на Railway ←←←←←
+    # ←←←←← ЭТО РАБОТАЕТ НА RAILWAY ←←←←←
     handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
     app.router.add_post("/webhook", handler.handle)
 
-    # Health-check
     app.router.add_get("/", lambda r: aiohttp.web.Response(text="KPI Bot работает!"))
     app.router.add_get("/ping", lambda r: aiohttp.web.Response(text="OK"))
 
@@ -63,16 +62,9 @@ def create_app():
     return app
 
 
+# ←←←←← ГЛАВНОЕ: запускаем ТОЛЬКО сервер, НИКАКИХ polling! ←←←←←
 if __name__ == "__main__":
-    if os.getenv("PORT") or os.getenv("RAILWAY_ENVIRONMENT"):
-        logger.info("Запуск на Railway/Render — webhook режим")
-        app = create_app()
-        port = int(os.getenv("PORT", 10000))
-        logger.info(f"Сервер запущен на порту {port}")
-        aiohttp.web.run_app(app, host="0.0.0.0", port=port)
-    else:
-        logger.info("Запуск локально — polling")
-        asyncio.run(dp.start_polling(bot))
-
-
-
+    app = create_app()
+    port = int(os.getenv("PORT", 8080))
+    logger.info(f"Запуск сервера на порту {port}")
+    aiohttp.web.run_app(app, host="0.0.0.0", port=port)
