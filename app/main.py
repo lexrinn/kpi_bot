@@ -67,14 +67,31 @@ def create_app() -> aiohttp.web.Application:
 
 # ─────── ОСНОВНОЙ ЗАПУСК ───────
 if __name__ == "__main__":
-    # Локально — polling
-    if not os.getenv("RENDER"):
+    # Если мы на Railway, Render или любом хостинге с портом — запускаем webhook
+    if os.getenv("PORT") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER"):
+        logger.info("Запуск в режиме webhook (Railway/Render)")
+        app = create_app()
+
+        # Формируем правильный URL
+        domain = (
+            os.getenv("RAILWAY_PUBLIC_DOMAIN") or 
+            f"{os.getenv('RENDER_SERVICE_NAME')}.onrender.com"
+        )
+        webhook_url = f"https://{domain}/webhook"
+        
+        # Устанавливаем webhook (это можно делать в on_startup, но на всякий случай здесь тоже)
+        import asyncio
+        asyncio.run(bot.set_webhook(webhook_url))
+        logger.info(f"Webhook установлен: {webhook_url}")
+
+        # Запускаем сервер
+        port = int(os.getenv("PORT", 10000))
+        logger.info(f"Сервер запущен на порту {port}")
+        aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
+    else:
+        # Локально — polling
         logger.info("Запуск в режиме polling (локально)")
         asyncio.run(dp.start_polling(bot))
-    else:
-        # На Render — webhook
-        app = create_app()
-        port = int(os.getenv("PORT", 10000))
-        logger.info(f"Запуск webhook на порту {port}")
-        aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
 
