@@ -27,7 +27,7 @@ dm = DataManager()
 
 async def update_cache_job():
     logger.info("Обновление кэша...")
-    success = await asyncio.to_thread(dm.update_cache)
+    success = await dm.update_cache()
     logger.info("Кэш обновлён!" if success else "Ошибка кэша")
 
 
@@ -75,3 +75,4 @@ if __name__ == "__main__":
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Запуск webhook на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
