@@ -35,18 +35,9 @@ def get_kpi_indicator(value, metric: str):
 
 def get_bugs_indicator(time_str):
     """Возвращает название цвета для времени исправления багов"""
-    # try:
-    #     h, m = map(int, str(time_str).split(':')[:2])
-    #     minutes = h * 60 + m
-    #     if minutes <= 120:  return "Green"
-    #     if minutes <=300:  return "Yellow"
-    #     return "Red"
-    # except:
-    #     return "Unknown"
-
     try:
-    h, m = map(int, str(time_str).split(":")[:2])
-    minutes = h * 60 + m
+        h, m = map(int, str(time_str).split(":")[:2])
+        minutes = h * 60 + m
     except Exception:
         return "Unknown"
     
@@ -91,4 +82,5 @@ def get_emoji(indicator: str) -> str:
 
 def get_sticker(indicator: str, category: str) -> str | None:
     return STICKERS.get(category, {}).get(indicator)
+
 
