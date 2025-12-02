@@ -12,5 +12,6 @@ async def start(message: Message):
 @router.message(Command("update"))
 async def upd(message: Message):
     from ..services.data_manager import DataManager
-    ok = DataManager().update_cache()
+    ok = await DataManager().update_cache()
     await message.answer("Готово!" if ok else "Ошибка")
+
