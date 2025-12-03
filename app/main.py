@@ -13,6 +13,12 @@ from app.bot import bot
 from app.config import UPDATE_TIMES, TIMEZONE
 from app.handlers import start_router, kpi_router, monitoring_router
 
+from .dm import dm
+
+if os.getenv("RENDER"):
+    from keep_alive import keep_alive
+    keep_alive()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -20,9 +26,6 @@ dp = Dispatcher()
 dp.include_router(start_router)
 dp.include_router(kpi_router)
 dp.include_router(monitoring_router)
-
-# ←←← ВОТ ОН, ЕДИНСТВЕННЫЙ ЭКЗЕМПЛЯР НА ВЕСЬ БОТ
-from .dm import dm
 
 async def update_cache_job():
     logger.info("Запуск обновления кэша по расписанию...")
@@ -63,4 +66,5 @@ if __name__ == "__main__":
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Запуск webhook на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
 
