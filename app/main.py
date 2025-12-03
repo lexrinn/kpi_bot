@@ -10,7 +10,6 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.bot import bot
-from app.services.data_manager import DataManager
 from app.config import UPDATE_TIMES, TIMEZONE
 from app.handlers import start_router, kpi_router, monitoring_router
 
@@ -64,3 +63,4 @@ if __name__ == "__main__":
         port = int(os.getenv("PORT", 10000))
         logger.info(f"Запуск webhook на порту {port}")
         aiohttp.web.run_app(app, host="0.0.0.0", port=port)
+
